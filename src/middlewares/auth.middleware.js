@@ -4,15 +4,14 @@ import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 const verifyJWT = asyncHandler(
-    async (req, res, next) => {
-
+    async (req,_, next) => {
+        //console.log(req.cookies?.accessToken);
         const token =
             req.cookies?.accessToken ||
             req.header("Authorization")?.replace(
                 "Bearer ",
-                ""
+                ""``
             );
-
         if (!token) {
             throw new ApiError(
                 401,
@@ -20,23 +19,13 @@ const verifyJWT = asyncHandler(
             );
         }
 
-        let decodedToken;
-
-        try {
-            decodedToken = jwt.verify(
-                token,
-                process.env.ACCESS_TOKEN_SECRET
-            );
-        } catch (error) {
-            throw new ApiError(
-                401,
-                "Invalid or expired access token"
-            );
-        }
-
+        const decodedToken = jwt.verify(
+            token,
+            process.env.ACCESS_SECRET
+        );
         const staff = await Staff.findById(
-            decodedToken._id
-        ).select("-passwordHash");
+            decodedToken?.id
+        );
 
         if (!staff) {
             throw new ApiError(

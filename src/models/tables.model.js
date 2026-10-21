@@ -5,7 +5,6 @@ const tableSchema = new Schema(
         label: {
             type: String,
             required: true,
-            unique: true,
             trim: true
         },
 

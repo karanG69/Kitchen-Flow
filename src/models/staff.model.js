@@ -1,4 +1,6 @@
 import mongoose, {Schema} from "mongoose";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken"; 
 
 const staffSchema = new Schema({
     name: {
@@ -31,24 +33,24 @@ const staffSchema = new Schema({
         default: true
     },
     refreshToken: {
-        type: String
+        type: String,
+        select: false
     },
 },
 {
     timestamps: true
 });
 
-staffSchema.pre("save", async function(next) { 
-    if (!this.isModified("passwordHash")) return next();
+staffSchema.pre("save", async function() { 
+    if (!this.isModified("passwordHash")) return;
     this.passwordHash = await bcrypt.hash(this.passwordHash, 10);
-    next();
 });
 
 staffSchema.methods.isPasswordCorrect = async function(password) {
     return await bcrypt.compare(password, this.passwordHash);
 };
 
-staffSchema.genrateAccessToken = function() {
+staffSchema.methods.generateAccessToken = function() {
     const payload = {
         id: this._id,
         name: this.name,
@@ -60,7 +62,7 @@ staffSchema.genrateAccessToken = function() {
 
 staffSchema.methods.generateRefreshToken = function() {
     const payload = {
-        id: this._id
+        _id: this._id
     };
     return jwt.sign(payload, process.env.REFRESH_SECRET, { expiresIn: process.env.REFRESH_EXPIRES_IN });
 };

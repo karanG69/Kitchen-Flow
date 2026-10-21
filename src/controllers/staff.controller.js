@@ -16,80 +16,33 @@ const generateAccessAndRefreshTokens = async(userId)=>{
         return {accessToken, refreshToken};
 
     }catch(error){
+        console.error("Token generation error:", error);
         throw new ApiError(500, "Something went wrong while genrating refresh and access tokens")
     }
 }
 
 const registerStaff = asyncHandler(async (req, res) => {
-    // Only managers can register staff
-    if (!req.user || req.user.role !== "manager") {
-        throw new ApiError(403, "Only managers can register staff");
-    }
-
     const { username, email, password, role } = req.body;
 
-    // Validate required fields
-    if (!username?.trim() || !email?.trim() || !password || !role) {
-        throw new ApiError(
-            400,
-            "Username, email, password and role are required"
-        );
+    if (!username || !email || !password || !role) {
+        throw new ApiError(400, "All fields are required");
     }
 
-    // Only allow kitchen staff and waiters
-    const allowedRoles = ["kitchen", "waiter"];
-
-    if (!allowedRoles.includes(role)) {
-        throw new ApiError(
-            400,
-            "Role must be either kitchen or waiter"
-        );
-    }
-
-    // Normalize input
-    const normalizedUsername = username.trim();
-    const normalizedEmail = email.trim().toLowerCase();
-
-    // Check for an existing account
-    const existingStaff = await Staff.findOne({
-        $or: [
-            { username: normalizedUsername },
-            { email: normalizedEmail }
-        ]
-    });
-
+    const existingStaff = await Staff.findOne({ email });
     if (existingStaff) {
-        throw new ApiError(
-            409,
-            "Staff member with this username or email already exists"
-        );
+        throw new ApiError(409, "Staff with this email already exists");
     }
 
-    // Hash password before storing it
-    const passwordHash = await bcrypt.hash(password, 12);
-
-    // Create staff account
-    const staff = await Staff.create({
-        username: normalizedUsername,
-        email: normalizedEmail,
-        passwordHash,
-        role,
-        active: true
+    const newStaff = new Staff({
+        name: username,
+        email,
+        passwordHash: password,
+        role
     });
 
-    // Exclude sensitive fields from the response
-    const createdStaff = await Staff.findById(staff._id)
-        .select("-passwordHash -refreshToken -refreshTokens");
+    await newStaff.save();
 
-    return res
-        .status(201)
-        .json(
-            new ApiResponse(
-                201,
-                createdStaff,
-                "Staff member registered successfully"
-            )
-        );
+    return res.status(201).json(new ApiResponse(201, newStaff, "Staff registered successfully"));   
 });  
 
 const staffLogin = asyncHandler(
@@ -103,8 +56,8 @@ const staffLogin = asyncHandler(
             );
         }
 
-        const staff = await Staff.findOne({ email });
-        
+        const staff = await Staff.findOne({ email }).select("+passwordHash");
+
         if (!staff || !(await staff.isPasswordCorrect(password))) {
             throw new ApiError(
                 401,
@@ -156,7 +109,8 @@ const staffLogout = asyncHandler(
             );
         }
 
-        staff.refreshToken = null;
+        staff.refresh
+        Token = null;
         await staff.save({ validateBeforeSave: false });
 
         return res

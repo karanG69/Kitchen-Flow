@@ -63,7 +63,6 @@ const orderSchema = new mongoose.Schema(
         number: {
             type: String,
             required: true,
-            unique: true
         },
 
         type: {
@@ -102,35 +101,35 @@ const orderSchema = new mongoose.Schema(
 
         subtotalMinor: {
             type: Number,
-            required: true,
+            //required: true,
             default: 0,
             min: 0
         },
 
         serviceChargeMinor: {
             type: Number,
-            required: true,
+            //required: true,
             default: 0,
             min: 0
         },
 
         taxMinor: {
             type: Number,
-            required: true,
+            //required: true,
             default: 0,
             min: 0
         },
 
         discountMinor: {
             type: Number,
-            required: true,
+            //required: true,
             default: 0,
             min: 0
         },
 
         totalMinor: {
             type: Number,
-            required: true,
+            //required: true,
             default: 0,
             min: 0
         },
@@ -162,10 +161,10 @@ const orderSchema = new mongoose.Schema(
             default: null
         },
 
-        idempotencyKey: {
-            type: String,
-            default: null
-        }
+        // idempotencyKey: {
+        //     type: String,
+        //     default: null
+        // }
     },
     {
         timestamps: true

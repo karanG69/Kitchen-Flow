@@ -1,21 +1,24 @@
-import { MenuCategory } from "../models/menuCategories.mdoel";
-import { MenuItem } from "../models/menuItems.model";
+import { MenuCategory } from "../models/menuCategories.model.js";
+import { MenuItem } from "../models/menuItems.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+//import { Staff } from "../models/staff.model.js";
 
 
 const createMenuCategory = asyncHandler(async (req, res)=>{
-    //check if the request is made by a manager
-    if (!req.user || req.user.role !== "manager") {
-        return res.status(403).json({ message: "Only managers can create menu categories" });
-    }   
+    console.log(req.staff);
+
+    if(req.staff?.role !== "manager"){
+        throw new ApiError(401, "Only manager can create menu category");
+    }
+
     const { name, sortOrder } = req.body;
 
     const existingCategory = await MenuCategory.findOne({ name });
 
     if (existingCategory) {
-        return res.status(400).json({ message: "Menu category already exists" });
+        throw new ApiError(400, "Menu category already exists");
     }
 
     const newCategory = new MenuCategory({
@@ -25,20 +28,20 @@ const createMenuCategory = asyncHandler(async (req, res)=>{
 
     await newCategory.save();
 
-    return res.status(201).json({ message: "Menu category created successfully", category: newCategory });
+    return res.status(201).json(new ApiResponse(201, { category: newCategory }, "Menu category created successfully"));
 });
 
 
 const getMenuCategories = asyncHandler(async (req, res)=>{
     const categories = await MenuCategory.find().sort({ sortOrder: 1 });
 
-    return res.status(200).json({ categories });
+    return res.status(200).json(new ApiResponse(200, { categories }, "Menu categories fetched successfully"));
 });
 
-const createmenuItem = asyncHandler(async (req, res) => {
+const addMenuItem = asyncHandler(async (req, res) => {
     //check if the request is made by a manager
-    if (!req.user || req.user.role !== "manager") {
-        return res.status(403).json({ message: "Only managers can create menu items" });
+    if (req.staff?.role !== "manager") {
+        throw new ApiError(403, "Only managers can create menu items");
     }   
     const { name, categoryId, priceMinor, station, prepMinutes, options } = req.body;
 
@@ -47,11 +50,11 @@ const createmenuItem = asyncHandler(async (req, res) => {
     //check if the categoryId exists in the MenuCategory collection
     const category = await MenuCategory.findById(categoryId);
     if (!category) {
-        return res.status(400).json({ message: "Menu category does not exist" });
+        throw new ApiError(400, "Menu category does not exist");
     }
 
     if (existingItem) {
-        return res.status(400).json({ message: "Menu item already exists in this category" });
+        throw new ApiError(400, "Menu item already exists in this category");
     }       
 
     const newItem = new MenuItem({
@@ -65,54 +68,110 @@ const createmenuItem = asyncHandler(async (req, res) => {
 
     await newItem.save();  
 
-    return res.status(201).json({ message: "Menu item created successfully", item: newItem });
+    return res.status(201).json(new ApiResponse(201, { item: newItem }, "Menu item created successfully"));
 });
 
 const getMenuItems = asyncHandler(async (req, res) => { 
-    const items = await MenuItem.find().populate("categoryId", "name").sort({ name: 1 });
-
-    return res.status(200).json({ items });
-});
-
-const getMenuItemsByCategory = asyncHandler(async (req, res) => {
-    const { categoryId } = req.params;
-
-    //check if the categoryId exists in the MenuCategory collection
-    const category = await MenuCategory.findById(categoryId);
-    if (!category) {
-        return res.status(400).json({ message: "Menu category does not exist" });
+    const { categoryId, station, available } = req.query;
+    const filter = {};
+    if (categoryId) {
+        filter.categoryId = categoryId;
     }
+    if (station) {
+        filter.station = station;
+    }
+    if (available !== undefined) {
+        filter.available = available === "true";
+    }                   
+    const items = await MenuItem.find(filter).populate("categoryId", "name").sort({ name: 1 });
 
-    const items = await MenuItem.find({ categoryId }).populate("categoryId", "name").sort({ name: 1 });
-
-    return res.status(200).json({ items });
+    return res.status(200).json(new ApiResponse(200, { items }, "Menu items fetched successfully"));
 });
 
-const getMenuItemByStation = asyncHandler(async (req, res) => {
-    const { station } = req.params;
+// const getMenuItemsByCategory = asyncHandler(async (req, res) => {
+//     const { categoryId } = req.params;
 
-    const items = await MenuItem.find({ station }).populate("categoryId", "name").sort({ name: 1 });
+//     //check if the categoryId exists in the MenuCategory collection
+//     const category = await MenuCategory.findById(categoryId);
+//     if (!category) {
+//         throw new ApiError(400, "Menu category does not exist");
+//     }
 
-    return res.status(200).json({ items });
-}); 
+//     const items = await MenuItem.find({ categoryId }).populate("categoryId", "name").sort({ name: 1 });
 
-const getOnlyAvailableMenuItems = asyncHandler(async (req, res) => {
-    const items = await MenuItem.find({ available: true }).populate("categoryId", "name").sort({ name: 1 });
+//     return res.status(200).json(new ApiResponse(200, { items }, "Menu items fetched successfully"));
+// });
 
-    return res.status(200).json({ items });
-});
+// const getMenuItemByStation = asyncHandler(async (req, res) => {
+//     const { station } = req.params;
+
+//     const items = await MenuItem.find({ station }).populate("categoryId", "name").sort({ name: 1 });
+
+//     return res.status(200).json(new ApiResponse(200, { items }, "Menu items fetched successfully"));
+// }); 
+
+// const getOnlyAvailableMenuItems = asyncHandler(async (req, res) => {
+//     const items = await MenuItem.find({ available: true }).populate("categoryId", "name").sort({ name: 1 });
+
+//     return res.status(200).json(new ApiResponse(200, { items }, "Menu items fetched successfully"));
+// });
 
 const updateMenuItem = asyncHandler(async (req, res) => {
-    // Implementation for updating a menu item
-    const { id } = req.params;
-    const updateData = req.body;
+    // Only managers can update menu items
+    if (req.staff?.role !== "manager") {
+        throw new ApiError(
+            403,
+            "Only managers can update menu items"
+        );
+    }
 
-    const updatedItem = await MenuItem.findByIdAndUpdate(id, updateData, { new: true }).populate("categoryId", "name");
+    const { itemId } = req.params;
+
+    const {
+        categoryId,
+        name,
+        priceMinor,
+        station,
+        prepMinutes,
+        options,
+        available
+    } = req.body;
+
+    // Allow only supported fields to be updated
+    const updateData = {};
+
+    if (categoryId !== undefined) updateData.categoryId = categoryId;
+    if (name !== undefined) updateData.name = name;
+    if (priceMinor !== undefined) updateData.priceMinor = priceMinor;
+    if (station !== undefined) updateData.station = station;
+    if (prepMinutes !== undefined) updateData.prepMinutes = prepMinutes;
+    if (options !== undefined) updateData.options = options;
+    if (available !== undefined) updateData.available = available;
+
+    if (Object.keys(updateData).length === 0) {
+        throw new ApiError(400, "No valid fields provided for update");
+    }
+
+    const updatedItem = await MenuItem.findByIdAndUpdate(
+        itemId,
+        { $set: updateData },
+        {
+            returnDocument: "after",
+            runValidators: true,
+        }
+    ).populate("categoryId", "name");
 
     if (!updatedItem) {
-        return res.status(404).json({ message: "Menu item not found" });
+        throw new ApiError(404, "Menu item not found");
     }
-    return res.status(200).json({ message: "Menu item updated successfully", item: updatedItem });
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            { item: updatedItem },
+            "Menu item updated successfully"
+        )
+    );
 });
 
 const updateAvailability = asyncHandler(async (req, res) => {
@@ -122,19 +181,17 @@ const updateAvailability = asyncHandler(async (req, res) => {
     const updatedItem = await MenuItem.findByIdAndUpdate(id, { available }, { new: true }).populate("categoryId", "name");
 
     if (!updatedItem) {
-        return res.status(404).json({ message: "Menu item not found" });
+        throw new ApiError(404, "Menu item not found");
     }
-    return res.status(200).json({ message: "Menu item availability updated successfully", item: updatedItem });
+    return res.status(200).json(new ApiResponse(200, { item: updatedItem }, "Menu item availability updated successfully"));
 });
 
 
 export { 
     createMenuCategory, 
     getMenuCategories, 
-    createmenuItem, 
+    addMenuItem, 
     getMenuItems, 
-    getMenuItemsByCategory, 
-    getMenuItemByStation, 
-    getOnlyAvailableMenuItems,
-    updateMenuItem
+    updateMenuItem,
+    updateAvailability
 };

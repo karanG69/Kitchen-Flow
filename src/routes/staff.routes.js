@@ -3,7 +3,7 @@ import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { 
     staffLogin,
     staffLogout,
-    createStaff 
+    registerStaff, 
 } from "../controllers/staff.controller.js";
 
 const staffRouter = Router();
@@ -20,9 +20,8 @@ staffRouter.post(
 );
 
 staffRouter.post(
-    "/create",
-    verifyJWT,
-    createStaff
+    "/register",
+    registerStaff
 );
 
 export default staffRouter;
