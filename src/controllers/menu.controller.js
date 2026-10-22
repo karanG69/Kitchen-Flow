@@ -174,17 +174,17 @@ const updateMenuItem = asyncHandler(async (req, res) => {
     );
 });
 
-const updateAvailability = asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const { available } = req.body;
+// const updateAvailability = asyncHandler(async (req, res) => {
+//     const { id } = req.params;
+//     const { available } = req.body;
 
-    const updatedItem = await MenuItem.findByIdAndUpdate(id, { available }, { new: true }).populate("categoryId", "name");
+//     const updatedItem = await MenuItem.findByIdAndUpdate(id, { available }, { new: true }).populate("categoryId", "name");
 
-    if (!updatedItem) {
-        throw new ApiError(404, "Menu item not found");
-    }
-    return res.status(200).json(new ApiResponse(200, { item: updatedItem }, "Menu item availability updated successfully"));
-});
+//     if (!updatedItem) {
+//         throw new ApiError(404, "Menu item not found");
+//     }
+//     return res.status(200).json(new ApiResponse(200, { item: updatedItem }, "Menu item availability updated successfully"));
+// });
 
 
 export { 
@@ -193,5 +193,5 @@ export {
     addMenuItem, 
     getMenuItems, 
     updateMenuItem,
-    updateAvailability
+    //updateAvailability
 };

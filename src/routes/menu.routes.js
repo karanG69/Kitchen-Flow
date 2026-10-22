@@ -6,9 +6,8 @@ import {
     addMenuItem, 
     getMenuItems, 
     updateMenuItem,
-    updateAvailability
 } from "../controllers/menu.controller.js"
-import { MenuItem } from "../models/menuItems.model.js";
+//import { MenuItem } from "../models/menuItems.model.js";
 
 const menuRouter = Router();
 

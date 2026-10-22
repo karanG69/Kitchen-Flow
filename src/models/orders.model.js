@@ -101,7 +101,7 @@ const orderSchema = new mongoose.Schema(
 
         subtotalMinor: {
             type: Number,
-            //required: true,
+            required: true,
             default: 0,
             min: 0
         },

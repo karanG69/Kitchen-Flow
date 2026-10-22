@@ -74,9 +74,6 @@ const openOrder = asyncHandler(async (req, res) => {
             });
             optionTotal += fetchedOption.priceMinor;
         }
-
-        const lineTotal = (optionTotal + menuItem.priceMinor)*quantity;
-        subtotalMinor += lineTotal;
         
         lines.push({
             menuItemId: menuItem._id,
@@ -86,8 +83,10 @@ const openOrder = asyncHandler(async (req, res) => {
             station: menuItem.station,
             options: selectedOptions
         });
-    }
 
+        const lineTotal = (optionTotal + menuItem.priceMinor)*quantity;
+        subtotalMinor += lineTotal;
+    }
 
     const newOrder = new Order({
         subtotalMinor,
@@ -157,7 +156,7 @@ const addItemstoOrder = asyncHandler(async (req, res) => {
     if (!order || order.status !== "open") {
         throw new ApiError(404, "Order not open or not found");
     }
-
+    let subtotalDiff = 0;
     for(const item of items){
         const { menuItemId, quantity } = item;
         const requestedOptions = item.options ?? []; 
@@ -176,7 +175,7 @@ const addItemstoOrder = asyncHandler(async (req, res) => {
         }
         
         const selectedOptions = [];
-
+        let optionTotal = 0;
         for (const requestedOption of requestedOptions) {
             const fetchedOption = menuItem.options.find(
                 (option) => option.name === requestedOption.name
@@ -188,13 +187,13 @@ const addItemstoOrder = asyncHandler(async (req, res) => {
                     `Option "${requestedOption.name}" is invalid for "${menuItem.name}"`
                 );
             }
-
+            
             selectedOptions.push({
                 name: fetchedOption.name,
                 priceMinor: fetchedOption.priceMinor
             });
+            optionTotal += fetchedOption.priceMinor;
         }
-
         order.lines.push({
             menuItemId: menuItem._id,
             name: menuItem.name,
@@ -203,7 +202,13 @@ const addItemstoOrder = asyncHandler(async (req, res) => {
             station: menuItem.station,
             options: selectedOptions
         });
+
+        const lineTotal = (optionTotal + menuItem.priceMinor)*quantity;
+        subtotalDiff += lineTotal;
     }
+
+    order.subtotalMinor += subtotalDiff;
+    order.totalMinor += subtotalDiff;
 
     await order.save();
 
@@ -216,7 +221,6 @@ const addItemstoOrder = asyncHandler(async (req, res) => {
             items
         }   
     });
-
     await orderEvent.save();
     return res.status(200).json(new ApiResponse(200, order, "Item added to order successfully")); 
 }); 
@@ -242,9 +246,30 @@ const updateOrderLine = asyncHandler(async (req, res) => {
         throw new ApiError(404, "Line not found");
     }   
 
+    //calculate Old line total
+    let oldOptionTotal = 0;
+    for(const option of options){
+        oldOptionTotal += option.priceMinor;
+    }
+    const oldLineTotal = line.quantity * (line.unitPriceMinor + oldOptionTotal);
+
     //update the line
     line.quantity = quantity;
     line.options = options;
+
+    //calculate new line total
+
+    let newOptionTotal = 0;
+    for(const option of options){
+        newOptionTotal += option.priceMinor;
+    }
+    const newLineTotal = line*quantity(newOptionTotal + line.unitPriceMinor);
+
+    order.subtotalMinor -= oldLineTotal;
+    order.subtotalMinor += newLineTotal;
+
+    order.totalMinor = order.subtotalMinor;
+
     await order.save();
 
     //create an order event for the updated line
@@ -322,7 +347,7 @@ const placeOrder = asyncHandler(async (req, res) => {
 
 const acceptOrder = asyncHandler(async (req, res) => {
     //check if the req. is made by a chef only
-    if (req.staff?.role !== "chef") {
+    if (req.staff?.role !== "kitchen") {
         throw new ApiError(403, "Only chefs can accept orders");
     }   
     const { orderId } = req.params;
@@ -339,7 +364,7 @@ const acceptOrder = asyncHandler(async (req, res) => {
 
 const rejectOrder = asyncHandler(async (req, res) => {
     //check if the req. is made by a chef only
-    if (req.staff?.role !== "chef") {
+    if (req.staff?.role !== "kitchen") {
         throw new ApiError(403, "Only chefs can reject orders");
     }   
     const { closeReason } = req.body;

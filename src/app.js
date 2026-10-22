@@ -18,6 +18,7 @@ import staffRouter from "./routes/staff.routes.js";
 import menuRouter from "./routes/menu.routes.js";
 import tableRouter from "./routes/table.routes.js";
 import orderRouter from "./routes/order.routes.js";
+import kitchenRouter from "./routes/kitchen.routes.js";
 
 app.use(
     "/api/v1/staff",
@@ -36,6 +37,11 @@ app.use(
 app.use(
     "/api/v1/orders",
     orderRouter
+)
+
+app.use(
+    "/api/v1/kitchen",
+    kitchenRouter
 )
 
 export { app };

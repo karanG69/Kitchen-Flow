@@ -13,7 +13,7 @@ staffRouter.post(
     staffLogin
 );
 
-staffRouter.post(
+staffRouter.get(
     "/logout",
     verifyJWT,
     staffLogout
